@@ -9,13 +9,18 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.datatables.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    
     <style>
         body { background-color: #f4f7f6; padding-top: 30px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .nav-pills .nav-link { color: #555; font-weight: 500; cursor: pointer; }
-        .nav-pills .nav-link.active { background-color: #0d6efd; color: white; box-shadow: 0 4px 10px rgba(13, 110, 253, 0.3); }
+        .nav-pills .nav-link { color: #555; font-weight: 500; cursor: pointer; border: 1px solid transparent; margin: 2px; }
+        .nav-pills .nav-link.active { background-color: #0d6efd !important; color: white !important; box-shadow: 0 4px 10px rgba(13, 110, 253, 0.3); }
         .card { border: none; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
         .header-smb { background: linear-gradient(135deg, #0d6efd 0%, #003d99 100%); color: white; padding: 25px; border-radius: 15px 15px 0 0; }
-        .table-responsive { min-height: 300px; }
+        .table-responsive { min-height: 300px; padding: 10px; }
     </style>
 </head>
 <body>
@@ -47,30 +52,27 @@
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-
 <script>
-    // 1. MASUKKAN ID SPREADSHEET KAMU (ID saja, bukan link panjang)
     const sheetID = '13UBpJFMI3osx9blzUy9Z7-FnYN8efF4znUT_vN3fxWM';
-    
-    // 2. DAFTAR NAMA TAB (Pastikan sama persis dengan di Google Sheets)
     const categories = ['Area Gudang Tengah', 'Area Depan Kantor', 'Area Gudang Depan', 'Area Gudang Samping'];
 
     let dataTable;
 
     function loadData(categoryName) {
-        // Reset tabel dan tampilkan loading
         if (dataTable) { dataTable.destroy(); }
         $('#headerRow').empty();
         $('#tableBody').empty();
         $('#stokTable').hide();
         $('#loading').show();
 
-        // Mengambil data CSV lewat Google Visualization API
-        const csvUrl = `https://docs.google.com/spreadsheets/d/13UBpJFMI3osx9blzUy9Z7-FnYN8efF4znUT_vN3fxWM/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(categoryName)}`;
+        // Pastikan URL memanggil ID yang benar dan Nama Sheet yang benar
+        const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(categoryName)}`;
+
+        // Cek apakah library Papa sudah siap
+        if (typeof Papa === 'undefined') {
+            alert("Library PapaParse gagal dimuat. Coba refresh halaman atau cek koneksi internet.");
+            return;
+        }
 
         Papa.parse(csvUrl, {
             download: true,
@@ -80,43 +82,43 @@
                 const data = results.data;
                 const headers = results.meta.fields;
 
-                if (!headers) {
-                    alert('Gagal membaca kolom. Cek apakah Google Sheets sudah di-Publish to Web.');
+                if (!headers || headers.length === 0) {
+                    $('#loading').html('<p class="text-danger">Gagal memuat kolom. Pastikan Google Sheets sudah di-Publish (Anyone with link).</p>');
                     return;
                 }
 
-                // Buat Header Tabel
                 headers.forEach(h => $('#headerRow').append(`<th>${h}</th>`));
 
-                // Masukkan Data ke Baris Tabel
                 data.forEach(row => {
-                    let htmlRow = '<tr>';
-                    headers.forEach(h => {
-                        let val = row[h] || '-';
-                        htmlRow += `<td>${val}</td>`;
-                    });
-                    htmlRow += '</tr>';
-                    $('#tableBody').append(htmlRow);
+                    if (Object.values(row).some(x => x !== "")) {
+                        let htmlRow = '<tr>';
+                        headers.forEach(h => {
+                            let val = row[h] || '-';
+                            htmlRow += `<td>${val}</td>`;
+                        });
+                        htmlRow += '</tr>';
+                        $('#tableBody').append(htmlRow);
+                    }
                 });
 
-                // Tampilkan Tabel
                 $('#loading').hide();
                 $('#stokTable').fadeIn();
                 
-                // Aktifkan Fitur Search & Sorting
                 dataTable = $('#stokTable').DataTable({
                     responsive: true,
                     pageLength: 25,
-                    language: {
-                        url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json'
-                    }
+                    language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json' }
                 });
+            },
+            error: function(err) {
+                console.error("Error PapaParse:", err);
+                $('#loading').html('<p class="text-danger">Gagal menarik data. Cek koneksi atau izin Share Google Sheets.</p>');
             }
         });
     }
 
-    // Generate tombol navigasi tab secara otomatis
     function initTabs() {
+        $('#categoryTabs').empty();
         categories.forEach((cat, index) => {
             const isActive = index === 0 ? 'active' : '';
             $('#categoryTabs').append(`
@@ -125,7 +127,6 @@
                 </li>
             `);
         });
-        // Load data tab pertama saat buka website
         loadData(categories[0]);
     }
 
@@ -135,7 +136,9 @@
         loadData(cat);
     }
 
-    $(document).ready(initTabs);
+    $(document).ready(function() {
+        initTabs();
+    });
 </script>
 
 </body>

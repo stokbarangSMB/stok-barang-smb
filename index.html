@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stok Barang Internal SINAR MEGA BINTANG</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <style>
+        body { background-color: #f4f7f6; padding-top: 30px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .nav-pills .nav-link { color: #555; font-weight: 500; cursor: pointer; }
+        .nav-pills .nav-link.active { background-color: #0d6efd; color: white; box-shadow: 0 4px 10px rgba(13, 110, 253, 0.3); }
+        .card { border: none; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
+        .header-smb { background: linear-gradient(135deg, #0d6efd 0%, #003d99 100%); color: white; padding: 25px; border-radius: 15px 15px 0 0; }
+        .table-responsive { min-height: 300px; }
+    </style>
+</head>
+<body>
+
+<div class="container mb-5">
+    <div class="card">
+        <div class="header-smb text-center">
+            <h3><i class="bi bi-box-seam-fill"></i> Monitoring Stok Sinar Mega Bintang</h3>
+            <p class="mb-0 small opacity-75">Data terupdate otomatis dari Google Sheets</p>
+        </div>
+        
+        <div class="p-4">
+            <ul class="nav nav-pills nav-justified mb-4" id="categoryTabs"></ul>
+
+            <div id="loading" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2 text-muted">Sedang mengambil data terbaru...</p>
+            </div>
+            
+            <div class="table-responsive">
+                <table id="stokTable" class="table table-hover w-100" style="display:none;">
+                    <thead class="table-dark">
+                        <tr id="headerRow"></tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<script>
+    // 1. MASUKKAN ID SPREADSHEET KAMU (ID saja, bukan link panjang)
+    const sheetID = '13UBpJFMI3osx9blzUy9Z7-FnYN8efF4znUT_vN3fxWM';
+    
+    // 2. DAFTAR NAMA TAB (Pastikan sama persis dengan di Google Sheets)
+    const categories = ['Area Gudang Tengah', 'Area Depan Kantor', 'Area Gudang Depan', 'Area Gudang Samping'];
+
+    let dataTable;
+
+    function loadData(categoryName) {
+        // Reset tabel dan tampilkan loading
+        if (dataTable) { dataTable.destroy(); }
+        $('#headerRow').empty();
+        $('#tableBody').empty();
+        $('#stokTable').hide();
+        $('#loading').show();
+
+        // Mengambil data CSV lewat Google Visualization API
+        const csvUrl = `https://docs.google.com/spreadsheets/d/13UBpJFMI3osx9blzUy9Z7-FnYN8efF4znUT_vN3fxWM/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(categoryName)}`;
+
+        Papa.parse(csvUrl, {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                const data = results.data;
+                const headers = results.meta.fields;
+
+                if (!headers) {
+                    alert('Gagal membaca kolom. Cek apakah Google Sheets sudah di-Publish to Web.');
+                    return;
+                }
+
+                // Buat Header Tabel
+                headers.forEach(h => $('#headerRow').append(`<th>${h}</th>`));
+
+                // Masukkan Data ke Baris Tabel
+                data.forEach(row => {
+                    let htmlRow = '<tr>';
+                    headers.forEach(h => {
+                        let val = row[h] || '-';
+                        htmlRow += `<td>${val}</td>`;
+                    });
+                    htmlRow += '</tr>';
+                    $('#tableBody').append(htmlRow);
+                });
+
+                // Tampilkan Tabel
+                $('#loading').hide();
+                $('#stokTable').fadeIn();
+                
+                // Aktifkan Fitur Search & Sorting
+                dataTable = $('#stokTable').DataTable({
+                    responsive: true,
+                    pageLength: 25,
+                    language: {
+                        url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json'
+                    }
+                });
+            }
+        });
+    }
+
+    // Generate tombol navigasi tab secara otomatis
+    function initTabs() {
+        categories.forEach((cat, index) => {
+            const isActive = index === 0 ? 'active' : '';
+            $('#categoryTabs').append(`
+                <li class="nav-item">
+                    <a class="nav-link ${isActive}" onclick="handleTabClick(this, '${cat}')">${cat}</a>
+                </li>
+            `);
+        });
+        // Load data tab pertama saat buka website
+        loadData(categories[0]);
+    }
+
+    function handleTabClick(element, cat) {
+        $('.nav-link').removeClass('active');
+        $(element).addClass('active');
+        loadData(cat);
+    }
+
+    $(document).ready(initTabs);
+</script>
+
+</body>
+</html>

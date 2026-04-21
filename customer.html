@@ -47,7 +47,7 @@
 
 <script>
     const sheetID = '13UBpJFMI3osx9blzUy9Z7-FnYN8efF4znUT_vN3fxWM';
-    const sheetName = 'Data_Customer'; // NAMA TAB DI GOOGLE SHEETS
+    const sheetName = 'Data Customer'; // NAMA TAB DI GOOGLE SHEETS
 
     function parseCSV(text) {
         const lines = text.split('\n').filter(line => line.trim() !== '');
@@ -83,7 +83,7 @@
             $('#custTable').show();
             $('#custTable').DataTable({ responsive: true, language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json' } });
         } catch (error) {
-            $('#loading').html('<p class="text-danger">Gagal memuat data customer. Pastikan tab "Data_Customer" ada di Sheets.</p>');
+            $('#loading').html('<p class="text-danger">Gagal memuat data customer. Pastikan tab "Data Customer" ada di Sheets.</p>');
         }
     }
     $(document).ready(loadCustomer);

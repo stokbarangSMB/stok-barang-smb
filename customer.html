@@ -47,14 +47,18 @@
 
 <script>
     const sheetID = '13UBpJFMI3osx9blzUy9Z7-FnYN8efF4znUT_vN3fxWM';
-    const sheetName = 'Data_Customer'; // NAMA TAB DI GOOGLE SHEETS
+    const sheetName = 'Data_Customer'; // PASTIKAN NAMA INI SAMA PERSIS DENGAN TAB
 
     function parseCSV(text) {
         const lines = text.split('\n').filter(line => line.trim() !== '');
-        const result = [];
+        if (lines.length === 0) return { data: [], headers: [] };
+        
         const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+        const result = [];
+        
         for (let i = 1; i < lines.length; i++) {
             const obj = {};
+            // Regex ini penting agar koma di dalam alamat tidak bikin tabel berantakan
             const currentline = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
             headers.forEach((header, index) => {
                 obj[header] = (currentline[index] || '').replace(/"/g, '').trim();
@@ -65,11 +69,25 @@
     }
 
     async function loadCustomer() {
-        const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+        // Tambahkan tqx=cb:123 (cache buster) agar browser tidak mengambil data lama (cache)
+        const cacheBuster = Math.floor(Math.random() * 1000);
+        const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}&cb=${cacheBuster}`;
+        
+        console.log("Memanggil URL:", csvUrl); // Cek di F12 Console
+
         try {
             const response = await fetch(csvUrl);
             const csvText = await response.text();
+            
+            // Cek apakah yang dikembalikan adalah HTML (error) atau CSV (benar)
+            if (csvText.includes("<!doctype html>")) {
+                throw new Error("Tab tidak ditemukan atau belum di-publish.");
+            }
+
             const { data, headers } = parseCSV(csvText);
+
+            $('#headerRow').empty();
+            $('#tableBody').empty();
 
             headers.forEach(h => $('#headerRow').append(`<th>${h}</th>`));
             data.forEach(row => {
@@ -80,10 +98,15 @@
             });
 
             $('#loading').hide();
-            $('#custTable').show();
-            $('#custTable').DataTable({ responsive: true, language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json' } });
+            $('#custTable').fadeIn();
+            $('#custTable').DataTable({ 
+                responsive: true, 
+                destroy: true, // Agar tidak error saat refresh data
+                language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json' } 
+            });
         } catch (error) {
-            $('#loading').html('<p class="text-danger">Gagal memuat data customer. Pastikan tab "Data Customer" ada di Sheets.</p>');
+            console.error("Detail Error:", error);
+            $('#loading').html(`<p class="text-danger">Gagal memuat data! <br> Pastikan tab <b>${sheetName}</b> sudah ada di Google Sheets dan sudah di-Publish.</p>`);
         }
     }
     $(document).ready(loadCustomer);

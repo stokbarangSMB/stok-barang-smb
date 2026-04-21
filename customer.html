@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Customer - SMB</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <style>
+        body { background-color: #f4f7f6; padding-top: 20px; font-family: 'Segoe UI', sans-serif; }
+        .header-cust { background: linear-gradient(135deg, #198754 0%, #0a5131 100%); color: white; padding: 25px; border-radius: 15px 15px 0 0; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body>
+
+<div class="container mb-5">
+    <div class="mb-3">
+        <a href="index.html" class="btn btn-outline-dark btn-sm"><i class="bi bi-house-door"></i> Menu Utama</a>
+    </div>
+
+    <div class="card">
+        <div class="header-cust text-center">
+            <h3><i class="bi bi-person-lines-fill"></i> Database Identitas Customer</h3>
+            <p class="mb-0 small opacity-75">Data Pelanggan Sinar Mega Bintang</p>
+        </div>
+        <div class="p-4">
+            <div id="loading" class="text-center py-5">
+                <div class="spinner-border text-success" role="status"></div>
+                <p class="mt-2 text-muted">Memuat data customer...</p>
+            </div>
+            <div class="table-responsive">
+                <table id="custTable" class="table table-striped w-100" style="display:none;">
+                    <thead class="table-dark"><tr id="headerRow"></tr></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+    const sheetID = '13UBpJFMI3osx9blzUy9Z7-FnYN8efF4znUT_vN3fxWM';
+    const sheetName = 'Data_Customer'; // NAMA TAB DI GOOGLE SHEETS
+
+    function parseCSV(text) {
+        const lines = text.split('\n').filter(line => line.trim() !== '');
+        const result = [];
+        const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+        for (let i = 1; i < lines.length; i++) {
+            const obj = {};
+            const currentline = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            headers.forEach((header, index) => {
+                obj[header] = (currentline[index] || '').replace(/"/g, '').trim();
+            });
+            result.push(obj);
+        }
+        return { data: result, headers: headers };
+    }
+
+    async function loadCustomer() {
+        const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+        try {
+            const response = await fetch(csvUrl);
+            const csvText = await response.text();
+            const { data, headers } = parseCSV(csvText);
+
+            headers.forEach(h => $('#headerRow').append(`<th>${h}</th>`));
+            data.forEach(row => {
+                let htmlRow = '<tr>';
+                headers.forEach(h => htmlRow += `<td>${row[h] || '-'}</td>`);
+                htmlRow += '</tr>';
+                $('#tableBody').append(htmlRow);
+            });
+
+            $('#loading').hide();
+            $('#custTable').show();
+            $('#custTable').DataTable({ responsive: true, language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json' } });
+        } catch (error) {
+            $('#loading').html('<p class="text-danger">Gagal memuat data customer. Pastikan tab "Data_Customer" ada di Sheets.</p>');
+        }
+    }
+    $(document).ready(loadCustomer);
+</script>
+</body>
+</html>

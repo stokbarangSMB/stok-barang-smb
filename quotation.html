@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Penawaran Harga (Quotation) - SMB</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <style>
+        body { background-color: #f4f7f6; padding-top: 20px; font-family: 'Segoe UI', sans-serif; }
+        /* Warna Biru/Cyan untuk tema Penawaran */
+        .header-qtt { background: linear-gradient(135deg, #0dcaf0 0%, #0aa2bd 100%); color: white; padding: 25px; border-radius: 15px 15px 0 0; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
+        
+        /* Badge Status */
+        .badge-deal { background-color: #1F6F5F; color: white; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; display: inline-block; }
+        .badge-pending { background-color: #FFC81E; color: #333; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; display: inline-block; }
+        .badge-batal { background-color: #CE2626; color: white; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; display: inline-block; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid px-4 mb-5">
+    <div class="mb-3 mt-2">
+        <a href="index.html" class="btn btn-outline-dark btn-sm"><i class="bi bi-house-door"></i> Menu Utama</a>
+    </div>
+
+    <div class="card">
+        <div class="header-qtt text-center">
+            <h3><i class="bi bi-file-earmark-text"></i> Monitoring Penawaran Harga (Quotation)</h3>
+            <p class="mb-0 small opacity-75">Update Status Penawaran Sinar Mega Bintang</p>
+        </div>
+        <div class="p-4">
+            <div id="loading" class="text-center py-5">
+                <div class="spinner-border text-info" role="status"></div>
+                <p class="mt-2 text-muted">Mengambil data quotation...</p>
+            </div>
+            
+            <div class="table-responsive">
+                <table id="qttTable" class="table table-hover w-100" style="display:none;">
+                    <thead class="table-dark"><tr id="headerRow"></tr></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="mt-3 text-end text-muted small">
+        <p>4RB Signature System</p>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+    const sheetID = '13UBpJFMI3osx9blzUy9Z7-FnYN8efF4znUT_vN3fxWM';
+    const sheetName = 'Data_Quotation'; 
+
+    function parseCSV(text) {
+        const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+        if (lines.length === 0) return { data: [], headers: [] };
+        const csvRegex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
+        const headers = lines[0].split(csvRegex).map(h => h.replace(/^"|"$/g, '').trim());
+
+        const result = [];
+        for (let i = 1; i < lines.length; i++) {
+            const obj = {};
+            const currentline = lines[i].split(csvRegex);
+            headers.forEach((header, index) => {
+                let val = currentline[index] || '';
+                val = val.replace(/^"|"$/g, '').trim();
+                obj[header] = val;
+            });
+            result.push(obj);
+        }
+        return { data: result, headers: headers };
+    }
+
+    async function loadQuotation() {
+        const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+        
+        try {
+            const response = await fetch(csvUrl);
+            const csvText = await response.text();
+            const { data, headers } = parseCSV(csvText);
+
+            if (headers.length === 0) throw new Error("Format salah");
+
+            headers.forEach(h => $('#headerRow').append(`<th>${h}</th>`));
+
+            data.forEach(row => {
+                let htmlRow = '<tr>';
+                headers.forEach(h => {
+                    let val = row[h] || '-';
+                    
+                    // Logika Status diperbaiki agar sesuai dengan CSS kamu
+                    if (h.toLowerCase() === 'status') {
+                        let lowerVal = val.toLowerCase();
+                        if (lowerVal.includes('deal')) {
+                            htmlRow += `<td><span class="badge-deal">${val}</span></td>`;
+                        } else if (lowerVal.includes('pending')) {
+                            htmlRow += `<td><span class="badge-pending">${val}</span></td>`;
+                        } else if (lowerVal.includes('batal') || lowerVal.includes('cancel')) {
+                            htmlRow += `<td><span class="badge-batal">${val}</span></td>`;
+                        } else {
+                            htmlRow += `<td>${val}</td>`;
+                        }
+                    } else {
+                        htmlRow += `<td>${val}</td>`;
+                    }
+                });
+                htmlRow += '</tr>';
+                $('#tableBody').append(htmlRow);
+            });
+
+            $('#loading').hide();
+            $('#qttTable').fadeIn();
+            $('#qttTable').DataTable({
+                responsive: true,
+                order: [[0, 'asc']],
+                language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json' }
+            });
+
+        } catch (error) {
+            $('#loading').html('<p class="text-danger">Gagal memuat data Quotation. Pastikan tab "Data_Quotation" sudah benar.</p>');
+        }
+    }
+
+    $(document).ready(loadQuotation);
+</script>
+</body>
+</html>

@@ -72,17 +72,28 @@
     const sheetName = 'Tagihan_Customer'; 
 
     function parseCSV(text) {
-        const lines = text.split('\n').filter(line => line.trim() !== '');
+        // Pisahkan baris, bersihkan baris kosong di akhir
+        const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
         if (lines.length === 0) return { data: [], headers: [] };
-        
-        const result = [];
-        const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
 
+        // Regex sakti untuk memisahkan koma yang BUKAN di dalam tanda kutip
+        const csvRegex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
+
+        // Ambil Header dan bersihkan tanda kutip serta spasi liar
+        const headers = lines[0].split(csvRegex).map(h => 
+            h.replace(/^"|"$/g, '').trim()
+        );
+
+        const result = [];
         for (let i = 1; i < lines.length; i++) {
             const obj = {};
-            const currentline = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            const currentline = lines[i].split(csvRegex);
+            
             headers.forEach((header, index) => {
-                obj[header] = (currentline[index] || '').replace(/"/g, '').trim();
+                let val = currentline[index] || '';
+                // Hapus tanda kutip di awal/akhir sel (akibat koma di dalam sel)
+                val = val.replace(/^"|"$/g, '').trim();
+                obj[header] = val;
             });
             result.push(obj);
         }

@@ -13,7 +13,6 @@
         body { background-color: #f4f7f6; padding-top: 20px; font-family: 'Segoe UI', sans-serif; }
         .header-ext { background: linear-gradient(135deg, #343a40 0%, #212529 100%); color: white; padding: 25px; border-radius: 15px 15px 0 0; }
         .card { border: none; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
-        /* Membuat teks harga jadi lebih menonjol */
         .text-harga { font-weight: bold; color: #198754; }
     </style>
 </head>
@@ -43,6 +42,7 @@
             </div>
         </div>
     </div>
+</div> 
 
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
@@ -89,7 +89,6 @@
                 let htmlRow = '<tr>';
                 headers.forEach(h => {
                     let val = row[h] || '-';
-                    // Jika kolom adalah "Harga", kasih warna hijau biar enak dilihat
                     if (h.toLowerCase().includes('harga')) {
                         htmlRow += `<td class="text-harga">${val}</td>`;
                     } else {
@@ -108,7 +107,7 @@
             });
 
         } catch (error) {
-            $('#loading').html('<p class="text-danger">Gagal memuat data. Pastikan tab "PL_External" sudah ada.</p>');
+            $('#loading').html('<p class="text-danger">Gagal memuat data. Pastikan tab di Google Sheets sudah benar.</p>');
         }
     }
 
